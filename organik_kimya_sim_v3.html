@@ -1,0 +1,340 @@
+
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; user-select: none; }
+#app { display: flex; flex-direction: column; height: 620px; background: var(--color-background-tertiary); border-radius: var(--border-radius-lg); overflow: hidden; border: 0.5px solid var(--color-border-tertiary); }
+#toolbar { background: var(--color-background-primary); border-bottom: 0.5px solid var(--color-border-tertiary); padding: 9px 12px; display: flex; align-items: center; gap: 7px; flex-wrap: wrap; }
+.tool-label { font-size: 11px; color: var(--color-text-secondary); font-weight: 500; }
+.atom-btn { display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 6px 10px; border-radius: var(--border-radius-md); border: 1.5px solid transparent; cursor: pointer; background: var(--color-background-secondary); transition: all 0.15s; min-width: 48px; }
+.atom-btn:hover { background: var(--color-background-tertiary); }
+.atom-btn.active { border-color: #378ADD; background: #E6F1FB; }
+.atom-symbol { font-size: 16px; font-weight: 700; line-height: 1; }
+.atom-name { font-size: 10px; color: var(--color-text-secondary); }
+.atom-btn.carbon .atom-symbol { color: #2C2C2A; }
+.atom-btn.hydrogen .atom-symbol { color: #185FA5; }
+.atom-btn.oxygen .atom-symbol { color: #A32D2D; }
+.atom-btn.bond-btn .atom-symbol { color: #3B6D11; font-size: 13px; }
+.atom-btn.eraser .atom-symbol { color: #A32D2D; }
+.divider { width: 0.5px; height: 36px; background: var(--color-border-tertiary); margin: 0 1px; }
+#canvas-wrap { flex: 1; position: relative; overflow: hidden; }
+svg#mol { width: 100%; height: 100%; cursor: crosshair; }
+#bottom-bar { background: var(--color-background-primary); border-top: 0.5px solid var(--color-border-tertiary); padding: 7px 12px; display: flex; align-items: center; gap: 10px; }
+#formula-display { font-size: 13px; font-weight: 500; color: var(--color-text-primary); flex: 1; }
+#molecule-name { font-size: 12px; font-weight: 500; }
+#clear-btn { font-size: 11px; padding: 4px 10px; border-radius: var(--border-radius-md); border: 0.5px solid var(--color-border-secondary); background: var(--color-background-secondary); cursor: pointer; color: var(--color-text-secondary); }
+#clear-btn:hover { background: var(--color-background-tertiary); }
+#hint { font-size: 10px; color: var(--color-text-tertiary); padding: 3px 12px 5px; background: var(--color-background-primary); border-top: 0.5px solid var(--color-border-tertiary); }
+.bond-indicator { font-size: 11px; color: #3B6D11; background: #EAF3DE; padding: 3px 8px; border-radius: 99px; display: none; }
+.bond-indicator.visible { display: block; }
+#success-banner { position: absolute; top: 10px; left: 50%; transform: translateX(-50%); border: 1px solid; font-size: 12px; font-weight: 500; padding: 7px 16px; border-radius: 99px; display: none; pointer-events: none; white-space: nowrap; max-width: 92%; text-align: center; }
+#success-banner.show { display: block; animation: popIn 0.3s ease; }
+#success-banner.green  { background:#EAF3DE; border-color:#639922; color:#3B6D11; }
+#success-banner.blue   { background:#E6F1FB; border-color:#185FA5; color:#0C447C; }
+#success-banner.amber  { background:#FAEEDA; border-color:#BA7517; color:#633806; }
+#success-banner.coral  { background:#FAECE7; border-color:#D85A30; color:#712B13; }
+#success-banner.purple { background:#EEEDFE; border-color:#7F77DD; color:#3C3489; }
+@keyframes popIn { from{opacity:0;transform:translateX(-50%) scale(0.85);}to{opacity:1;transform:translateX(-50%) scale(1);} }
+#debug { position:absolute; bottom:4px; right:8px; font-size:10px; color:var(--color-text-tertiary); pointer-events:none; }
+</style>
+
+<div id="app">
+  <div id="toolbar">
+    <span class="tool-label">Atom</span>
+    <button class="atom-btn carbon active" data-tool="C"><span class="atom-symbol">C</span><span class="atom-name">Karbon</span></button>
+    <button class="atom-btn hydrogen" data-tool="H"><span class="atom-symbol">H</span><span class="atom-name">Hidrojen</span></button>
+    <button class="atom-btn oxygen" data-tool="O"><span class="atom-symbol">O</span><span class="atom-name">Oksijen</span></button>
+    <div class="divider"></div>
+    <span class="tool-label">Bağ</span>
+    <button class="atom-btn bond-btn" data-tool="bond"><span class="atom-symbol">—</span><span class="atom-name">Tekli</span></button>
+    <button class="atom-btn bond-btn" data-tool="bond2"><span class="atom-symbol">=</span><span class="atom-name">Çiftli</span></button>
+    <button class="atom-btn bond-btn" data-tool="bond3"><span class="atom-symbol">≡</span><span class="atom-name">Üçlü</span></button>
+    <div class="divider"></div>
+    <button class="atom-btn eraser" data-tool="erase"><span class="atom-symbol"><i class="ti ti-eraser" style="font-size:14px"></i></span><span class="atom-name">Sil</span></button>
+    <div class="divider"></div>
+    <span class="bond-indicator" id="bond-indicator">İlk atomu seç...</span>
+  </div>
+
+  <div id="canvas-wrap">
+    <svg id="mol">
+      <g id="bonds-layer"></g>
+      <g id="atoms-layer"></g>
+    </svg>
+    <div id="success-banner"></div>
+    <div id="debug"></div>
+  </div>
+
+  <div id="bottom-bar">
+    <span id="formula-display">Tuvale atom yerleştir →</span>
+    <span id="molecule-name"></span>
+    <button id="clear-btn">Temizle</button>
+  </div>
+  <div id="hint">Atom seç → tuvale tıkla. Bağ seç → iki atoma tıkla. Aynı atomlara tekrar bağ → derece artar. Sil → atoma/bağa tıkla. Sürükle → taşı.</div>
+</div>
+
+<script>
+const svg = document.getElementById('mol');
+const bondsLayer = document.getElementById('bonds-layer');
+const atomsLayer = document.getElementById('atoms-layer');
+const formulaDisplay = document.getElementById('formula-display');
+const moleculeNameEl = document.getElementById('molecule-name');
+const bondIndicator = document.getElementById('bond-indicator');
+const successBanner = document.getElementById('success-banner');
+const debugEl = document.getElementById('debug');
+
+let tool='C', atoms=[], bonds=[], bondFirst=null, nextId=1, dragging=null, dragOffset={x:0,y:0};
+
+const COLORS={ C:{fill:'#2C2C2A',stroke:'#444',label:'#fff'}, H:{fill:'#185FA5',stroke:'#0C447C',label:'#fff'}, O:{fill:'#993C1D',stroke:'#712B13',label:'#fff'} };
+const RADIUS={ C:20, H:14, O:18 };
+
+document.querySelectorAll('.atom-btn').forEach(btn=>{
+  btn.addEventListener('click',()=>{
+    tool=btn.dataset.tool;
+    document.querySelectorAll('.atom-btn').forEach(b=>b.classList.remove('active'));
+    btn.classList.add('active');
+    bondFirst=null;
+    bondIndicator.classList.remove('visible');
+    if(['bond','bond2','bond3'].includes(tool)){bondIndicator.classList.add('visible');bondIndicator.textContent='İlk atomu seç...';}
+    clearHighlights();
+  });
+});
+
+document.getElementById('clear-btn').addEventListener('click',()=>{
+  atoms=[];bonds=[];bondFirst=null;nextId=1;
+  atomsLayer.innerHTML='';bondsLayer.innerHTML='';
+  updateFormula();successBanner.classList.remove('show');
+});
+
+svg.addEventListener('click',e=>{if(['C','H','O'].includes(tool)){const p=svgPoint(e);addAtom(tool,p.x,p.y);}});
+
+function svgPoint(e){const r=svg.getBoundingClientRect();return{x:e.clientX-r.left,y:e.clientY-r.top};}
+function addAtom(type,x,y){const id=nextId++;const atom={id,type,x,y};atoms.push(atom);renderAtom(atom);updateFormula();}
+
+function renderAtom(atom){
+  const g=document.createElementNS('http://www.w3.org/2000/svg','g');
+  g.setAttribute('data-id',atom.id);g.style.cursor='pointer';
+  const r=RADIUS[atom.type],c=COLORS[atom.type];
+  const circle=document.createElementNS('http://www.w3.org/2000/svg','circle');
+  circle.setAttribute('cx',atom.x);circle.setAttribute('cy',atom.y);circle.setAttribute('r',r);
+  circle.setAttribute('fill',c.fill);circle.setAttribute('stroke',c.stroke);circle.setAttribute('stroke-width','2');
+  const text=document.createElementNS('http://www.w3.org/2000/svg','text');
+  text.setAttribute('x',atom.x);text.setAttribute('y',atom.y+1);
+  text.setAttribute('text-anchor','middle');text.setAttribute('dominant-baseline','middle');
+  text.setAttribute('fill',c.label);text.setAttribute('font-size',atom.type==='H'?'11':'13');
+  text.setAttribute('font-weight','700');text.setAttribute('pointer-events','none');
+  text.textContent=atom.type;
+  g.appendChild(circle);g.appendChild(text);
+  g.addEventListener('click',e=>{e.stopPropagation();handleAtomClick(atom,g,circle);});
+  g.addEventListener('mousedown',e=>{if(!['bond','bond2','bond3','erase'].includes(tool))startDrag(e,atom,g);});
+  atomsLayer.appendChild(g);
+}
+
+function handleAtomClick(atom,g,circle){
+  if(tool==='erase'){eraseAtom(atom.id);return;}
+  if(['bond','bond2','bond3'].includes(tool)){
+    if(!bondFirst){
+      bondFirst=atom;
+      circle.setAttribute('stroke','#639922');circle.setAttribute('stroke-width','3');
+      bondIndicator.textContent='İkinci atomu seç...';
+    } else {
+      if(bondFirst.id===atom.id){clearHighlights();bondFirst=null;bondIndicator.textContent='İlk atomu seç...';return;}
+      const existing=bonds.find(b=>(b.a===bondFirst.id&&b.b===atom.id)||(b.a===atom.id&&b.b===bondFirst.id));
+      if(existing){existing.order=Math.min(existing.order+1,3);redrawBond(existing);}
+      else{const order=tool==='bond'?1:tool==='bond2'?2:3;addBond(bondFirst.id,atom.id,order);}
+      clearHighlights();bondFirst=null;bondIndicator.textContent='İlk atomu seç...';
+      updateFormula();
+    }
+  }
+}
+
+function clearHighlights(){
+  atomsLayer.querySelectorAll('g').forEach(g=>{
+    const id=parseInt(g.getAttribute('data-id'));const atom=atoms.find(a=>a.id===id);
+    if(atom){const c=g.querySelector('circle');c.setAttribute('stroke',COLORS[atom.type].stroke);c.setAttribute('stroke-width','2');}
+  });
+}
+
+function addBond(aId,bId,order){
+  const a=atoms.find(x=>x.id===aId),b=atoms.find(x=>x.id===bId);if(!a||!b)return;
+  const bond={id:nextId++,a:aId,b:bId,order:order||1};bonds.push(bond);renderBond(bond,a,b);
+}
+
+function renderBond(bond,a0,b0){
+  if(!a0)a0=atoms.find(x=>x.id===bond.a);if(!b0)b0=atoms.find(x=>x.id===bond.b);if(!a0||!b0)return;
+  const g=document.createElementNS('http://www.w3.org/2000/svg','g');
+  g.setAttribute('data-bond-id',bond.id);g.style.cursor='pointer';
+  g.addEventListener('click',e=>{e.stopPropagation();if(tool==='erase')eraseBond(bond.id);});
+  drawBondLines(g,a0,b0,bond.order);bondsLayer.insertBefore(g,bondsLayer.firstChild);
+}
+
+function drawBondLines(g,a,b,order){
+  g.innerHTML='';
+  const dx=b.x-a.x,dy=b.y-a.y,len=Math.sqrt(dx*dx+dy*dy);if(len===0)return;
+  const nx=-dy/len,ny=dx/len;
+  const offsets=order===1?[0]:order===2?[-3.5,3.5]:[-5,0,5];
+  offsets.forEach(off=>{
+    const line=document.createElementNS('http://www.w3.org/2000/svg','line');
+    line.setAttribute('x1',a.x+nx*off);line.setAttribute('y1',a.y+ny*off);
+    line.setAttribute('x2',b.x+nx*off);line.setAttribute('y2',b.y+ny*off);
+    line.setAttribute('stroke','#888780');line.setAttribute('stroke-width',order===1?'3':'2.5');
+    line.setAttribute('pointer-events','none');g.appendChild(line);
+  });
+  const hit=document.createElementNS('http://www.w3.org/2000/svg','line');
+  hit.setAttribute('x1',a.x);hit.setAttribute('y1',a.y);hit.setAttribute('x2',b.x);hit.setAttribute('y2',b.y);
+  hit.setAttribute('stroke','transparent');hit.setAttribute('stroke-width','14');g.appendChild(hit);
+}
+
+function redrawBond(bond){
+  const g=bondsLayer.querySelector(`[data-bond-id="${bond.id}"]`);
+  const a=atoms.find(x=>x.id===bond.a),b=atoms.find(x=>x.id===bond.b);
+  if(g&&a&&b)drawBondLines(g,a,b,bond.order);
+}
+
+function eraseAtom(id){
+  bonds=bonds.filter(b=>{if(b.a===id||b.b===id){const el=bondsLayer.querySelector(`[data-bond-id="${b.id}"]`);if(el)el.remove();return false;}return true;});
+  atoms=atoms.filter(a=>a.id!==id);const el=atomsLayer.querySelector(`[data-id="${id}"]`);if(el)el.remove();updateFormula();
+}
+
+function eraseBond(id){
+  bonds=bonds.filter(b=>{if(b.id===id){const el=bondsLayer.querySelector(`[data-bond-id="${id}"]`);if(el)el.remove();return false;}return true;});updateFormula();
+}
+
+function updateBondPositions(atomId){
+  bonds.forEach(b=>{if(b.a===atomId||b.b===atomId){
+    const g=bondsLayer.querySelector(`[data-bond-id="${b.id}"]`);
+    const a=atoms.find(x=>x.id===b.a),bA=atoms.find(x=>x.id===b.b);
+    if(g&&a&&bA)drawBondLines(g,a,bA,b.order);
+  }});
+}
+
+function startDrag(e,atom,g){
+  e.stopPropagation();dragging={atom,g};
+  const rect=svg.getBoundingClientRect();dragOffset.x=e.clientX-rect.left-atom.x;dragOffset.y=e.clientY-rect.top-atom.y;
+}
+document.addEventListener('mousemove',e=>{
+  if(!dragging)return;
+  const rect=svg.getBoundingClientRect();
+  dragging.atom.x=e.clientX-rect.left-dragOffset.x;dragging.atom.y=e.clientY-rect.top-dragOffset.y;
+  const c=dragging.g.querySelector('circle'),t=dragging.g.querySelector('text');
+  c.setAttribute('cx',dragging.atom.x);c.setAttribute('cy',dragging.atom.y);
+  t.setAttribute('x',dragging.atom.x);t.setAttribute('y',dragging.atom.y+1);
+  updateBondPositions(dragging.atom.id);
+});
+document.addEventListener('mouseup',()=>{dragging=null;});
+
+function toSub(n){return String(n).split('').map(d=>'₀₁₂₃₄₅₆₇₈₉'[+d]).join('');}
+
+function getInfo(){
+  const C=atoms.filter(a=>a.type==='C').length;
+  const H=atoms.filter(a=>a.type==='H').length;
+  const O=atoms.filter(a=>a.type==='O').length;
+  const totalBonds=bonds.length;
+
+  // Bağ türlerine göre ayır — atom tiplerine bakarak
+  const ccBonds=bonds.filter(b=>{
+    const a=atoms.find(x=>x.id===b.a),bA=atoms.find(x=>x.id===b.b);
+    return a&&bA&&a.type==='C'&&bA.type==='C';
+  });
+  const chBonds=bonds.filter(b=>{
+    const a=atoms.find(x=>x.id===b.a),bA=atoms.find(x=>x.id===b.b);
+    return a&&bA&&((a.type==='C'&&bA.type==='H')||(a.type==='H'&&bA.type==='C'));
+  });
+  const coBonds=bonds.filter(b=>{
+    const a=atoms.find(x=>x.id===b.a),bA=atoms.find(x=>x.id===b.b);
+    return a&&bA&&((a.type==='C'&&bA.type==='O')||(a.type==='O'&&bA.type==='C'));
+  });
+
+  // cc bağlarındaki üçlü ve çiftli sayısı
+  const cc3=ccBonds.filter(b=>b.order===3).length;
+  const cc2=ccBonds.filter(b=>b.order===2).length;
+  const cc1=ccBonds.filter(b=>b.order===1).length;
+
+  return {C,H,O,totalBonds,ccBonds,chBonds,coBonds,cc1,cc2,cc3};
+}
+
+// Sadece atom sayısı + cc bağ yapısına bak, ch bağ sayısını ZORLAMA
+// Çünkü kullanıcı her H'a bağ çizmeyebilir veya fazla çizmiş olabilir
+// Bunun yerine: C sayısı + H sayısı + cc bağ düzeni yeterli
+
+const MOLECULES=[
+  // 1C
+  {name:'Metan (CH₄)',color:'green',
+   check:({C,H,O,cc1,cc2,cc3,ccBonds,chBonds,totalBonds})=>C===1&&H===4&&O===0&&ccBonds.length===0&&chBonds.length===4},
+  // 2C
+  {name:'Etan (C₂H₆)',color:'green',
+   check:({C,H,O,cc1,cc2,cc3,ccBonds})=>C===2&&H===6&&O===0&&ccBonds.length===1&&cc1===1&&cc2===0&&cc3===0},
+  {name:'🎉 Eten (C₂H₄)',color:'blue',
+   check:({C,H,O,cc1,cc2,cc3,ccBonds})=>C===2&&H===4&&O===0&&ccBonds.length===1&&cc2===1&&cc3===0},
+  {name:'🎉 Etin (C₂H₂)',color:'amber',
+   check:({C,H,O,cc3,ccBonds})=>C===2&&H===2&&O===0&&ccBonds.length===1&&cc3===1},
+  // 3C
+  {name:'Propan (C₃H₈)',color:'green',
+   check:({C,H,O,ccBonds,cc1,cc2,cc3})=>C===3&&H===8&&O===0&&ccBonds.length===2&&cc1===2&&cc2===0&&cc3===0},
+  {name:'Propen (C₃H₆)',color:'blue',
+   check:({C,H,O,ccBonds,cc1,cc2,cc3})=>C===3&&H===6&&O===0&&ccBonds.length===2&&cc2===1&&cc1===1&&cc3===0},
+  {name:'Propin (C₃H₄)',color:'amber',
+   check:({C,H,O,ccBonds,cc1,cc3})=>C===3&&H===4&&O===0&&ccBonds.length===2&&cc3===1&&cc1===1},
+  // 4C
+  {name:'Bütan (C₄H₁₀)',color:'green',
+   check:({C,H,O,ccBonds,cc1,cc2,cc3})=>C===4&&H===10&&O===0&&ccBonds.length===3&&cc1===3&&cc2===0&&cc3===0},
+  {name:'1-Büten (C₄H₈)',color:'blue',
+   check:({C,H,O,ccBonds,cc1,cc2,cc3})=>C===4&&H===8&&O===0&&ccBonds.length===3&&cc2===1&&cc1===2&&cc3===0},
+  {name:'1-Bütin (C₄H₆)',color:'amber',
+   check:({C,H,O,ccBonds,cc1,cc3})=>C===4&&H===6&&O===0&&ccBonds.length===3&&cc3===1&&cc1===2},
+  // 5C
+  {name:'Pentan (C₅H₁₂)',color:'green',
+   check:({C,H,O,ccBonds,cc1,cc2,cc3})=>C===5&&H===12&&O===0&&ccBonds.length===4&&cc1===4&&cc2===0&&cc3===0},
+  {name:'1-Penten (C₅H₁₀)',color:'blue',
+   check:({C,H,O,ccBonds,cc1,cc2,cc3})=>C===5&&H===10&&O===0&&ccBonds.length===4&&cc2===1&&cc1===3&&cc3===0},
+  {name:'1-Pentin (C₅H₈)',color:'amber',
+   check:({C,H,O,ccBonds,cc1,cc3})=>C===5&&H===8&&O===0&&ccBonds.length===4&&cc3===1&&cc1===3},
+  // 6C
+  {name:'🏆 Heksan (C₆H₁₄)',color:'green',
+   check:({C,H,O,ccBonds,cc1,cc2,cc3})=>C===6&&H===14&&O===0&&ccBonds.length===5&&cc1===5&&cc2===0&&cc3===0},
+  {name:'🏆 1-Heksen (C₆H₁₂)',color:'blue',
+   check:({C,H,O,ccBonds,cc1,cc2,cc3})=>C===6&&H===12&&O===0&&ccBonds.length===5&&cc2===1&&cc1===4&&cc3===0},
+  {name:'🏆 1-Heksin (C₆H₁₀)',color:'amber',
+   check:({C,H,O,ccBonds,cc1,cc3})=>C===6&&H===10&&O===0&&ccBonds.length===5&&cc3===1&&cc1===4},
+  {name:'🏆 Sikloheksan (C₆H₁₂) — Halka!',color:'purple',
+   check:({C,H,O,ccBonds,cc1,cc2,cc3})=>C===6&&H===12&&O===0&&ccBonds.length===6&&cc1===6&&cc2===0&&cc3===0},
+  {name:'🏆 Benzen (C₆H₆) — Aromatik!',color:'coral',
+   check:({C,H,O,ccBonds,cc1,cc2,cc3})=>C===6&&H===6&&O===0&&ccBonds.length===6&&cc2===3&&cc1===3},
+  // Oksijenli
+  {name:'Metanol (CH₃OH)',color:'coral',
+   check:({C,H,O,coBonds,ccBonds})=>C===1&&H===4&&O===1&&coBonds.length===1&&coBonds[0].order===1&&ccBonds.length===0},
+  {name:'Etanol (C₂H₅OH)',color:'coral',
+   check:({C,H,O,coBonds,ccBonds,cc1})=>C===2&&H===6&&O===1&&coBonds.length===1&&coBonds[0].order===1&&ccBonds.length===1&&cc1===1},
+  {name:'Formaldehit (CH₂O)',color:'purple',
+   check:({C,H,O,coBonds,ccBonds})=>C===1&&H===2&&O===1&&coBonds.length===1&&coBonds[0].order===2&&ccBonds.length===0},
+  {name:'Asetaldehit (C₂H₄O)',color:'purple',
+   check:({C,H,O,coBonds,ccBonds,cc1})=>C===2&&H===4&&O===1&&coBonds.length===1&&coBonds[0].order===2&&ccBonds.length===1&&cc1===1},
+];
+
+function updateFormula(){
+  const {C,H,O,totalBonds}=getInfo();
+  if(C===0&&H===0&&O===0){formulaDisplay.textContent='Tuvale atom yerleştir →';moleculeNameEl.textContent='';debugEl.textContent='';return;}
+  let f='';
+  if(C>0)f+=C>1?`C${toSub(C)}`:'C';
+  if(H>0)f+=H>1?`H${toSub(H)}`:'H';
+  if(O>0)f+=O>1?`O${toSub(O)}`:'O';
+  formulaDisplay.textContent=f+(totalBonds>0?` · ${totalBonds} bağ`:'');
+
+  const info=getInfo();
+
+  // Debug: ne olduğunu göster
+  debugEl.textContent=`C:${info.C} H:${info.H} O:${info.O} | CC bağ:${info.ccBonds.length}(tek:${info.cc1} çift:${info.cc2} üç:${info.cc3}) | CH bağ:${info.chBonds.length}`;
+
+  let found=null;
+  for(const mol of MOLECULES){if(mol.check(info)){found=mol;break;}}
+
+  if(found){
+    moleculeNameEl.textContent='✓ '+found.name;
+    const colors={green:'#3B6D11',blue:'#185FA5',amber:'#854F0B',coral:'#712B13',purple:'#3C3489'};
+    moleculeNameEl.style.color=colors[found.color]||'#3B6D11';
+    successBanner.textContent=found.name;
+    successBanner.className='';successBanner.classList.add('show',found.color);
+    clearTimeout(window._t);window._t=setTimeout(()=>successBanner.classList.remove('show'),4500);
+  } else {
+    moleculeNameEl.textContent='';
+    successBanner.classList.remove('show');
+  }
+}
+</script>

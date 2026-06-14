@@ -1,0 +1,274 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Kimya Kelime Avcısı</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0;}
+body{font-family:sans-serif;background:#0a0f1e;display:flex;justify-content:center;align-items:flex-start;min-height:100vh;padding:20px;}
+#gw{width:100%;max-width:680px;border-radius:16px;background:#0f1729;padding:16px;position:relative;}
+#topbar{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;flex-wrap:wrap;gap:8px;}
+.stat-pill{background:#1a2a4e;color:#c0d8ff;font-size:14px;font-weight:700;padding:6px 14px;border-radius:20px;}
+.stat-pill span{color:#FFD700;}
+#cat-banner{text-align:center;font-size:12px;font-weight:700;letter-spacing:2px;color:#6080aa;margin-bottom:8px;text-transform:uppercase;}
+#timer-bar-wrap{width:100%;height:6px;background:#1a2a4e;border-radius:3px;margin-bottom:12px;}
+#timer-bar{height:6px;background:#FFD700;border-radius:3px;transition:width 0.4s linear;}
+#formula-stage{background:#12122e;border-radius:14px;padding:18px 12px 14px;margin-bottom:12px;text-align:center;}
+#formula-display{font-size:52px;font-weight:900;color:#7ef8ff;letter-spacing:4px;line-height:1.1;margin-bottom:8px;font-family:monospace;}
+#formula-hint{font-size:13px;color:#5a7aaa;margin-top:4px;}
+#formula-category{display:inline-block;font-size:11px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;padding:3px 12px;border-radius:10px;background:#1a3a5e;color:#60aaff;margin-bottom:6px;}
+#input-area{display:flex;gap:8px;justify-content:center;margin-bottom:10px;flex-wrap:wrap;}
+#name-input{font-size:20px;font-weight:700;padding:10px 16px;border-radius:12px;border:2px solid #3a5a9e;background:#1a2a4e;color:#e0f0ff;width:220px;text-align:center;outline:none;}
+#name-input:focus{border-color:#60aaff;}
+#check-btn{font-size:15px;font-weight:700;padding:10px 22px;background:#3a40cc;color:#fff;border:none;border-radius:12px;cursor:pointer;}
+#check-btn:hover{background:#5a60ec;}
+#hint-btn{font-size:14px;font-weight:700;padding:10px 16px;background:#6a4a00;color:#FFD700;border:none;border-radius:12px;cursor:pointer;}
+#skip-btn{font-size:14px;font-weight:700;padding:10px 16px;background:#2a1a3e;color:#9080cc;border:none;border-radius:12px;cursor:pointer;}
+#feedback-box{text-align:center;font-size:17px;font-weight:700;min-height:26px;margin-bottom:8px;}
+.fb-ok{color:#4aff90;}
+.fb-err{color:#ff6060;}
+.fb-hint{color:#FFD700;}
+#letters-hint{display:flex;justify-content:center;gap:5px;flex-wrap:wrap;min-height:36px;margin-bottom:8px;}
+.lh-box{width:32px;height:32px;border-radius:8px;background:#1a2a4e;border:2px solid #3a5aaa;display:flex;align-items:center;justify-content:center;font-size:16px;font-weight:900;color:#e0f0ff;}
+.lh-box.revealed{background:#1a4a2e;border-color:#4aff90;color:#4aff90;}
+#progress-row{display:flex;justify-content:center;gap:5px;margin-top:6px;}
+.pdot{width:16px;height:16px;border-radius:50%;background:#1a2a4e;border:2px solid #3a5aaa;}
+.pdot.done{background:#4aff90;border-color:#4aff90;}
+.pdot.active{background:#FFD700;border-color:#FFD700;}
+.pdot.wrong{background:#ff6060;border-color:#ff6060;}
+#win-screen{display:none;flex-direction:column;align-items:center;padding:28px 10px;text-align:center;}
+#win-screen h2{font-size:24px;color:#FFD700;margin-bottom:8px;}
+#win-screen p{font-size:15px;color:#c0d0ff;margin-bottom:18px;}
+#play-again{font-size:15px;font-weight:700;padding:10px 28px;background:#3a40cc;color:#fff;border:none;border-radius:12px;cursor:pointer;}
+</style>
+</head>
+<body>
+<div id="gw">
+  <div id="topbar">
+    <div class="stat-pill">Puan: <span id="score">0</span></div>
+    <div class="stat-pill">Soru: <span id="qnum">1</span>/10</div>
+    <div class="stat-pill">Can: <span id="lives">3</span> ❤️</div>
+  </div>
+  <div id="cat-banner">Kategori: <span id="cat-name">—</span></div>
+  <div id="timer-bar-wrap"><div id="timer-bar"></div></div>
+  <div id="formula-stage">
+    <div id="formula-category"></div>
+    <div id="formula-display">—</div>
+    <div id="formula-hint"></div>
+  </div>
+  <div id="letters-hint"></div>
+  <div id="input-area">
+    <input type="text" id="name-input" placeholder="Bileşiğin adı..." autocomplete="off"/>
+    <button id="check-btn" onclick="checkAnswer()">Kontrol</button>
+    <button id="hint-btn" onclick="useHint()">İpucu (-5p)</button>
+    <button id="skip-btn" onclick="skipQuestion()">Atla</button>
+  </div>
+  <div id="feedback-box"></div>
+  <div id="progress-row"></div>
+  <div id="win-screen">
+    <div style="font-size:52px;margin-bottom:10px;">🏆</div>
+    <h2>Tebrikler, Kimyager!</h2>
+    <p>Toplam Puan: <strong id="final-score" style="color:#FFD700;"></strong></p>
+    <div id="result-list" style="text-align:left;margin-bottom:16px;max-width:320px;width:100%;"></div>
+    <button id="play-again" onclick="startGame()">Tekrar Oyna</button>
+  </div>
+</div>
+
+<script>
+const COMPOUNDS = [
+  {formula:"H₂O",       name:"SU",                   hint:"İçtiğimiz sıvı",                   cat:"Temel"},
+  {formula:"CO₂",       name:"KARBONDIOKSIT",         hint:"Bitkilerin aldığı gaz",             cat:"Gazlar"},
+  {formula:"O₂",        name:"OKSIJEN",               hint:"Soluduğumuz gaz",                  cat:"Gazlar"},
+  {formula:"NaCl",      name:"SOFRATUZU",             hint:"Yemeklere eklenir",                 cat:"Tuzlar"},
+  {formula:"CH₄",       name:"METAN",                 hint:"Doğalgaz bileşeni",                 cat:"Organik"},
+  {formula:"H₂O₂",      name:"HIDROJENPEROKSIT",      hint:"Dezenfektan olarak kullanılır",     cat:"Asitler"},
+  {formula:"NH₃",       name:"AMONYAK",               hint:"Keskin kokulu gaz",                 cat:"Gazlar"},
+  {formula:"HCl",       name:"HIDROKLORIKASIT",       hint:"Mide asidi",                        cat:"Asitler"},
+  {formula:"C₆H₁₂O₆",  name:"GLIKOZ",                hint:"Şeker, enerji kaynağı",             cat:"Organik"},
+  {formula:"Fe₂O₃",     name:"DEMITOKSIT",            hint:"Pas olarak bilinir",                cat:"Oksitler"},
+  {formula:"CaCO₃",     name:"KALSIYUMKARBONAT",      hint:"Tebeşir ve mermer",                 cat:"Tuzlar"},
+  {formula:"C₂H₅OH",   name:"ETANOL",                hint:"Alkollü içeceklerde bulunur",        cat:"Organik"},
+  {formula:"SO₂",       name:"KÜKURTDIOKSIT",         hint:"Asit yağmuruna neden olur",         cat:"Gazlar"},
+  {formula:"N₂",        name:"AZOT",                  hint:"Havanın yüzde 78'i",               cat:"Gazlar"},
+  {formula:"KMnO₄",     name:"POTASYUMPERMANGANAT",   hint:"Mor renkli dezenfektan",            cat:"Tuzlar"},
+];
+
+const CAT_COLORS = {
+  "Temel":"#1a3a5e","Gazlar":"#1a3a2e","Organik":"#3a2a1e",
+  "Asitler":"#3a1a1e","Tuzlar":"#2a1a3e","Oksitler":"#3a2a0e"
+};
+const CAT_TEXT = {
+  "Temel":"#60aaff","Gazlar":"#60ffaa","Organik":"#ffaa60",
+  "Asitler":"#ff6060","Tuzlar":"#cc80ff","Oksitler":"#ffdd60"
+};
+
+let queue=[], idx=0, score=0, lives=3, timerInt=null, timeLeft=25;
+let results=[];
+
+function shuffle(a){return [...a].sort(()=>Math.random()-0.5);}
+
+function startGame(){
+  queue=shuffle(COMPOUNDS).slice(0,10);
+  idx=0; score=0; lives=3; results=[];
+  document.getElementById("score").textContent=0;
+  document.getElementById("lives").textContent=3;
+  document.getElementById("win-screen").style.display="none";
+  document.getElementById("feedback-box").textContent="";
+  loadQuestion();
+}
+
+function buildProgress(){
+  const pr=document.getElementById("progress-row");
+  pr.innerHTML="";
+  queue.forEach((_,i)=>{
+    const d=document.createElement("div");
+    d.className="pdot"+(i<idx?" done":i===idx?" active":"");
+    if(results[i]==="wrong") d.className="pdot wrong";
+    pr.appendChild(d);
+  });
+}
+
+function buildLetterBoxes(name){
+  const lh=document.getElementById("letters-hint");
+  lh.innerHTML="";
+  name.split("").forEach((ch,i)=>{
+    const b=document.createElement("div");
+    b.className="lh-box";
+    b.id="lb"+i;
+    b.textContent=" ";
+    if(ch===" ") b.style.background="transparent";
+    lh.appendChild(b);
+  });
+}
+
+function loadQuestion(){
+  if(idx>=queue.length){showWin();return;}
+  const q=queue[idx];
+  document.getElementById("qnum").textContent=(idx+1);
+  document.getElementById("cat-name").textContent=q.cat;
+  document.getElementById("formula-display").textContent=q.formula;
+  document.getElementById("formula-hint").textContent=q.hint;
+  const catEl=document.getElementById("formula-category");
+  catEl.textContent=q.cat;
+  catEl.style.background=CAT_COLORS[q.cat]||"#1a2a4e";
+  catEl.style.color=CAT_TEXT[q.cat]||"#60aaff";
+  document.getElementById("feedback-box").textContent="";
+  document.getElementById("name-input").value="";
+  document.getElementById("name-input").disabled=false;
+  document.getElementById("name-input").focus();
+  buildLetterBoxes(q.name);
+  buildProgress();
+  startTimer();
+}
+
+function startTimer(){
+  clearInterval(timerInt);
+  timeLeft=25;
+  const bar=document.getElementById("timer-bar");
+  bar.style.width="100%";
+  bar.style.background="#FFD700";
+  timerInt=setInterval(()=>{
+    timeLeft--;
+    const pct=Math.round((timeLeft/25)*100);
+    bar.style.width=pct+"%";
+    if(timeLeft<=8) bar.style.background="#ff4a4a";
+    if(timeLeft<=0){clearInterval(timerInt);loseLife("Süre doldu!");}
+  },1000);
+}
+
+function normalize(s){
+  return s.toUpperCase().replace(/\s+/g,"")
+    .replace(/İ/g,"I").replace(/Ğ/g,"G").replace(/Ü/g,"U")
+    .replace(/Ş/g,"S").replace(/Ö/g,"O").replace(/Ç/g,"C");
+}
+
+function checkAnswer(){
+  const inp=document.getElementById("name-input").value.trim();
+  if(!inp){document.getElementById("feedback-box").innerHTML="<span class='fb-err'>Bir şeyler yaz!</span>";return;}
+  const q=queue[idx];
+  clearInterval(timerInt);
+  if(normalize(inp)===normalize(q.name)){
+    const bonus=Math.max(0,Math.round(timeLeft/3));
+    score+=10+bonus;
+    document.getElementById("score").textContent=score;
+    document.getElementById("feedback-box").innerHTML="<span class='fb-ok'>Doğru! +"+(10+bonus)+" puan 🎉</span>";
+    revealAllLetters(q.name);
+    results[idx]="ok";
+    document.getElementById("name-input").disabled=true;
+    setTimeout(()=>{idx++;loadQuestion();},1400);
+  } else {
+    loseLife("Yanlış cevap!");
+  }
+}
+
+function loseLife(msg){
+  lives--;
+  document.getElementById("lives").textContent=Math.max(0,lives);
+  const q=queue[idx];
+  if(lives<=0){
+    document.getElementById("feedback-box").innerHTML="<span class='fb-err'>"+msg+" Doğrusu: <strong>"+q.name+"</strong></span>";
+    revealAllLetters(q.name);
+    results[idx]="wrong";
+    document.getElementById("name-input").disabled=true;
+    setTimeout(()=>{lives=3;document.getElementById("lives").textContent=3;idx++;loadQuestion();},2200);
+  } else {
+    document.getElementById("feedback-box").innerHTML="<span class='fb-err'>"+msg+" "+lives+" can kaldı.</span>";
+    startTimer();
+  }
+}
+
+function revealAllLetters(name){
+  name.split("").forEach((ch,i)=>{
+    const b=document.getElementById("lb"+i);
+    if(b){b.textContent=ch;b.classList.add("revealed");}
+  });
+}
+
+function useHint(){
+  score=Math.max(0,score-5);
+  document.getElementById("score").textContent=score;
+  const q=queue[idx];
+  let revealed=0;
+  for(let i=0;i<q.name.length;i++){
+    const b=document.getElementById("lb"+i);
+    if(b&&!b.classList.contains("revealed")&&q.name[i]!==" "){
+      b.textContent=q.name[i];b.classList.add("revealed");
+      revealed++;
+      if(revealed>=2) break;
+    }
+  }
+  document.getElementById("feedback-box").innerHTML="<span class='fb-hint'>İpucu: Harfler gösterildi (-5 puan)</span>";
+}
+
+function skipQuestion(){
+  clearInterval(timerInt);
+  const q=queue[idx];
+  document.getElementById("feedback-box").innerHTML="<span class='fb-err'>Atlandı. Doğrusu: <strong>"+q.name+"</strong></span>";
+  revealAllLetters(q.name);
+  results[idx]="wrong";
+  setTimeout(()=>{idx++;loadQuestion();},1500);
+}
+
+function showWin(){
+  clearInterval(timerInt);
+  document.getElementById("final-score").textContent=score+" puan";
+  const rl=document.getElementById("result-list");
+  rl.innerHTML="";
+  queue.forEach((q,i)=>{
+    const ok=results[i]==="ok";
+    const div=document.createElement("div");
+    div.style.cssText="display:flex;align-items:center;gap:10px;padding:5px 0;border-bottom:1px solid #1a2a4e;color:#c0d0ff;font-size:13px;";
+    div.innerHTML=(ok?"<span style='color:#4aff90;font-size:16px;'>✓</span>":"<span style='color:#ff6060;font-size:16px;'>✗</span>")
+      +"<span style='font-family:monospace;font-weight:900;color:#7ef8ff;min-width:90px;'>"+q.formula+"</span>"
+      +"<span style='font-weight:700;'>"+q.name+"</span>";
+    rl.appendChild(div);
+  });
+  document.getElementById("win-screen").style.display="flex";
+}
+
+document.getElementById("name-input").addEventListener("keydown",function(e){if(e.key==="Enter")checkAnswer();});
+startGame();
+</script>
+</body>
+</html>

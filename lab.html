@@ -59,18 +59,23 @@ function liqColor(k){
   return [178,184,194,.80];
 }
 const OBJ=[
-  {id:'yuzuk',name:'Gümüş yüzük',d:10.5,w:56,h:48,snd:'metal',draw:dRing},
-  {id:'kupe',name:'Altın küpe',d:19.3,w:44,h:60,snd:'metal',draw:dEarring},
-  {id:'igne',name:'Demir iğne',d:7.8,w:100,h:16,snd:'metal',draw:dNeedle},
-  {id:'al',name:'Alüminyum küp',d:2.7,w:50,h:50,snd:'metal',draw:dCube},
-  {id:'bilye',name:'Cam bilye',d:2.5,w:40,h:40,snd:'glass',draw:dMarble},
-  {id:'yumurta',name:'Yumurta',d:1.05,approx:1,w:44,h:58,snd:'soft',draw:dEgg},
-  {id:'kasik',name:'Tahta kaşık',d:0.9,w:100,h:28,snd:'soft',draw:dSpoon},
-  {id:'stearik',name:'Stearik asit',d:0.9,w:54,h:40,snd:'soft',draw:dStearic},
-  {id:'buz',name:'Buz',d:0.9,approx:1,w:48,h:48,snd:'glass',draw:dIce},
-  {id:'mantar',name:'Mantar tıpa',d:0.25,approx:1,w:40,h:50,snd:'soft',draw:dCork}
+  // v: örnek hacim (cm³); L: gerçek en uzun boyut (cm); boy: bilgi satırındaki boyut
+  {id:'yuzuk',name:'Gümüş yüzük',d:10.5,v:0.4,L:2,boy:'çap 2 cm',w:56,h:48,snd:'metal',draw:dRing},
+  {id:'kupe',name:'Altın küpe',d:19.3,v:0.2,L:2,boy:'çap 2 cm',w:44,h:60,snd:'metal',draw:dEarring},
+  {id:'igne',name:'Demir iğne',d:7.8,v:0.018,L:3.5,boy:'3,5 cm',w:100,h:7,snd:'metal',draw:dNeedle},
+  {id:'al',name:'Alüminyum küp',d:2.7,v:8,L:2,boy:'kenar 2 cm',w:50,h:50,snd:'metal',draw:dCube},
+  {id:'bilye',name:'Cam bilye',d:2.5,v:2.1,L:1.6,boy:'çap 1,6 cm',w:40,h:40,snd:'glass',draw:dMarble},
+  {id:'yumurta',name:'Yumurta',d:1.05,approx:1,v:55,L:5.7,boy:'5,7 cm',w:44,h:58,snd:'soft',draw:dEgg},
+  {id:'kasik',name:'Tahta kaşık',d:0.9,v:30,L:30,boy:'30 cm',w:100,h:24,snd:'soft',draw:dSpoon},
+  {id:'stearik',name:'Stearik asit',d:0.9,v:10,L:3,boy:'3 cm',w:54,h:40,snd:'soft',draw:dStearic},
+  {id:'buz',name:'Buz',d:0.9,approx:1,v:27,L:3,boy:'kenar 3 cm',w:48,h:48,snd:'glass',draw:dIce},
+  {id:'mantar',name:'Mantar tıpa',d:0.25,approx:1,v:12,L:3.5,boy:'3,5 cm',w:40,h:50,snd:'soft',draw:dCork},
+  {id:'civi',name:'Demir çivi',d:7.8,v:0.4,L:5,boy:'5 cm',w:100,h:16,snd:'metal',draw:dNail},
+  {id:'kutuk',name:'Kütük',d:0.7,approx:1,v:31400,L:100,boy:'1 m × 20 cm',w:100,h:22,snd:'soft',draw:dLog}
 ];
-const objs=OBJ.map(o=>Object.assign({x:0,y:0,vy:0,state:'home',pf:0,still:0,hx:0,hy:0},o));
+const objs=OBJ.map(o=>Object.assign({x:0,y:0,vy:0,state:'home',pf:0,still:0,hx:0,hy:0,ts:1,m:o.d*o.v},o));
+// Tüm cisimler aynı kuralla ölçeklenir: çizim boyu ∝ √(gerçek boy). Büyüklük sırası korunur.
+objs.forEach(o=>{const f=30*Math.sqrt(o.L)/Math.max(o.w,o.h);o.w*=f;o.h*=f;});
 let zOrder=objs.slice();
 
 let liqKey='su', col=liqColor('su').slice(), colFrom=col.slice(), colT=1;
@@ -81,6 +86,9 @@ const liqD=()=>LIQ[liqKey].d;
 const clamp=(v,a,b)=>v<a?a:v>b?b:v, lerp=(a,b,t)=>a+(b-a)*t, rnd=(a,b)=>a+Math.random()*(b-a);
 function fmt(d){return (Math.round(d*100)/100).toString().replace('.',',');}
 function dl(o){return (o.approx?'≈':'')+fmt(o.d);}
+function fmtNum(x,md){try{return x.toLocaleString('tr-TR',{maximumFractionDigits:md});}catch(e){return (Math.round(x*Math.pow(10,md))/Math.pow(10,md)).toString().replace('.',',');}}
+function fmtM(m){return m>=1000?fmtNum(m/1000,1)+' kg':m<10?fmtNum(m,2)+' g':fmtNum(m,1)+' g';}
+function fmtN(m){const n=m/1000*9.8;return n<0.1?fmtNum(n,3):n<10?fmtNum(n,2):fmtNum(n,0);}
 function cmpOf(o){const a=Math.round(o.d*100),b=Math.round(liqD()*100);return a>b?1:a<b?-1:0;}
 const OUT={1:'BATAR','0':'ASKIDA KALIR','-1':'YÜZER'};
 const OUTC={1:'#c8382e','0':'#b77d00','-1':'#16894a'};
@@ -142,16 +150,16 @@ function layout(){
   const wide=W>=860;L.wide=wide;
   if(wide){const tw=Math.max(250,Math.min(360,W*.27));L.tray={x:W-tw-16,y:16,w:tw,h:H-32};L.area={x:20,y:12,w:W-tw-52,h:H-24};}
   else{const th=Math.max(200,H*.32);L.tray={x:10,y:H-th-10,w:W-20,h:th};L.area={x:10,y:8,w:W-20,h:H-th-26};}
-  const ph=wide?122:100;L.panel={x:L.area.x,y:L.area.y+L.area.h-ph,w:L.area.w,h:ph};
+  const ph=wide?142:116;L.panel={x:L.area.x,y:L.area.y+L.area.h-ph,w:L.area.w,h:ph};
   const avH=L.area.h-ph-70, tw=Math.min(L.area.w-30,avH*1.7);
   const T={};T.x0=L.area.x+(L.area.w-tw)/2;T.x1=T.x0+tw;T.top=L.area.y+52;T.bottom=L.area.y+52+avH;
   T.w=tw;T.h=avH;T.wall=7;T.xi0=T.x0+T.wall;T.xi1=T.x1-T.wall;T.bi=T.bottom-T.wall;T.base=T.top+T.h*.26;L.tank=T;
   // tepsi ızgarası
-  const cols=wide?2:5,rows=Math.ceil(objs.length/cols);
-  const gy=L.tray.y+64,gh=L.tray.y+L.tray.h-10-gy,cw=(L.tray.w-16)/cols,ch=gh/rows;
-  S=clamp(Math.min(T.h/360,(ch-34)/62,(cw-14)/108),.5,1.6);G=1500*S;
+  const cols=wide?2:6,rows=Math.ceil(objs.length/cols);
+  const gy=L.tray.y+78,gh=L.tray.y+L.tray.h-10-gy,cw=(L.tray.w-16)/cols,ch=gh/rows;
+  S=clamp(T.h/360,.5,1.6);G=1500*S;
   objs.forEach((o,i)=>{const cx=i%cols,cy=(i/cols)|0;o.slot={x:L.tray.x+8+cx*cw+3,y:gy+cy*ch+3,w:cw-6,h:ch-6};
-    o.hx=o.slot.x+o.slot.w/2;o.hy=o.slot.y+(o.slot.h-30)/2+2;
+    o.hx=o.slot.x+o.slot.w/2;o.hy=o.slot.y+(o.slot.h-30)/2+2;o.ts=Math.min(1,(o.slot.w-16)/(o.w*S),(o.slot.h-40)/(o.h*S));
     if(o.state!=='tank'){o.state='home';o.x=o.hx;o.y=o.hy;}});
   rel.forEach(([o,rx,ry])=>{o.x=T.x0+rx*T.w;o.y=T.top+ry*T.h;o.x=clamp(o.x,T.xi0+o.w*S/2,T.xi1-o.w*S/2);o.still=0;});
 }
@@ -220,17 +228,19 @@ function step(h){
 function inTank(o){const T=L.tank;return o.x>T.x0&&o.x<T.x1&&o.y<T.bi&&o.y>T.top-140*S;}
 
 /* ---------- Etkileşim ---------- */
-let drag=null;
+let drag=null,hov=null,hovT=0,hovP={x:0,y:0};
 function pt(e){const r=cv.getBoundingClientRect();return {x:e.clientX-r.left,y:e.clientY-r.top};}
 function hitTest(p){for(let i=zOrder.length-1;i>=0;i--){const o=zOrder[i];if(o.state==='ret')continue;
-  const pw=o.w*S/2+10,ph=Math.max(o.h*S/2,14)+10;if(Math.abs(p.x-o.x)<pw&&Math.abs(p.y-o.y)<ph)return o;
+  const k=scOf(o),pw=o.w*S*k/2+10,ph=Math.max(o.h*S*k/2,14)+10;if(Math.abs(p.x-o.x)<pw&&Math.abs(p.y-o.y)<ph)return o;
   if(o.state==='home'&&p.x>o.slot.x&&p.x<o.slot.x+o.slot.w&&p.y>o.slot.y&&p.y<o.slot.y+o.slot.h)return o;}return null;}
-cv.addEventListener('pointerdown',e=>{initAudio();const p=pt(e),o=hitTest(p);if(!o)return;
+cv.addEventListener('pointerleave',()=>{hov=null;});
+cv.addEventListener('pointerdown',e=>{initAudio();hov=null;const p=pt(e),o=hitTest(p);if(!o)return;
   try{cv.setPointerCapture(e.pointerId);}catch(_){}
   if(o.state==='home'){o.x=o.hx;o.y=o.hy;}
   drag={o,dx:p.x-o.x,dy:p.y-o.y,py:o.y};o.state='drag';o.vy=0;zOrder=zOrder.filter(z=>z!==o);zOrder.push(o);SFX.pick();e.preventDefault();});
 cv.addEventListener('pointermove',e=>{const p=pt(e);
-  if(!drag){cv.style.cursor=hitTest(p)?'grab':'default';return;}
+  if(!drag){const ho=hitTest(p);cv.style.cursor=ho?'grab':'default';
+    if(e.pointerType!=='touch'&&ho&&ho.state==='home'){if(hov!==ho){hov=ho;hovT=performance.now();}hovP=p;}else hov=null;return;}
   const o=drag.o;o.x=clamp(p.x-drag.dx,0,W);o.y=clamp(p.y-drag.dy,0,H);
   if(inTank(o)){const T=L.tank;o.x=clamp(o.x,T.xi0+o.w*S/2,T.xi1-o.w*S/2);o.y=Math.min(o.y,T.bi-o.h*S/2);
     const f=subFrac(o);if(f>0&&f<1)disturb(o.x,(o.y-drag.py)*3,o.w*S);
@@ -332,7 +342,25 @@ function dCork(w,h){const tw=w/2,bw=w*.4,ey=h*.1;
   c.fillStyle='#dfb27c';c.beginPath();c.ellipse(0,-h/2+ey,tw,ey,0,0,Math.PI*2);c.fill();c.strokeStyle='rgba(110,70,30,.5)';c.lineWidth=1;c.stroke();
   c.fillStyle='rgba(95,58,22,.55)';for(let i=0;i<16;i++){const u=((i*37)%17)/17-.5,v=((i*53)%19)/19;c.beginPath();c.arc(u*w*.75*(1-v*.2),-h/2+ey*2+v*(h-ey*3),1.3,0,Math.PI*2);c.fill();}}
 
-function drawObj(o,alpha){const w=o.w*S,h=o.h*S;c.save();c.translate(o.x,o.y);if(alpha!==undefined)c.globalAlpha=alpha;
+function dNail(w,h){
+  const g=c.createLinearGradient(0,-h/2,0,h/2);g.addColorStop(0,'#e9edf1');g.addColorStop(.5,'#8a939e');g.addColorStop(1,'#4b535d');
+  const hw=h*.3,sh=h*.34,tip=h*1.2;
+  c.fillStyle=g;rr(-w/2,-h/2,hw,h,2);c.fill();
+  c.beginPath();c.moveTo(-w/2+hw,-sh/2);c.lineTo(w/2-tip,-sh/2);c.lineTo(w/2,0);c.lineTo(w/2-tip,sh/2);c.lineTo(-w/2+hw,sh/2);c.closePath();c.fill();
+  c.strokeStyle='rgba(40,46,54,.5)';c.lineWidth=1;c.stroke();rr(-w/2,-h/2,hw,h,2);c.stroke();
+}
+function dLog(w,h){
+  const rx=h*.2,x1=-w/2+rx,x2=w/2-rx;
+  const g=c.createLinearGradient(0,-h/2,0,h/2);g.addColorStop(0,'#9a6a3a');g.addColorStop(.35,'#7a4f27');g.addColorStop(1,'#4a2d14');
+  c.fillStyle=g;c.beginPath();c.ellipse(x1,0,rx,h/2,0,Math.PI/2,Math.PI*1.5);c.lineTo(x2,-h/2);c.lineTo(x2,h/2);c.closePath();c.fill();
+  c.strokeStyle='rgba(50,28,10,.55)';c.lineWidth=1.2;
+  for(let i=0;i<5;i++){const y=-h/2+h*(i+.7)/5.4;c.beginPath();c.moveTo(x1+4,y);for(let x=x1+4;x<x2;x+=w/14){c.quadraticCurveTo(x+w/28,y+(i%2?3:-3),x+w/14,y);}c.stroke();}
+  c.fillStyle='#e7c18b';c.beginPath();c.ellipse(x2,0,rx,h/2,0,0,Math.PI*2);c.fill();
+  c.strokeStyle='#5b3818';c.lineWidth=2.5;c.stroke();
+  c.strokeStyle='rgba(165,110,55,.8)';c.lineWidth=1;for(let k=1;k<5;k++){c.beginPath();c.ellipse(x2,0,rx*k/5,h/2*k/5,0,0,Math.PI*2);c.stroke();}
+}
+function scOf(o){if(o.state==='home')return o.ts;if(o.state==='ret')return lerp(1,o.ts,1-Math.pow(1-Math.min(1,o.rt),3));return 1;}
+function drawObj(o,alpha){const k=scOf(o),w=o.w*S*k,h=o.h*S*k;c.save();c.translate(o.x,o.y);if(alpha!==undefined)c.globalAlpha=alpha;
   if(o.state==='drag'){c.shadowColor='rgba(0,0,0,.25)';c.shadowBlur=14;c.shadowOffsetY=6;}
   o.draw(w,h);c.restore();}
 
@@ -350,7 +378,7 @@ function render(){
   // tepsi
   const tr=L.tray;c.fillStyle='#fff';rr(tr.x,tr.y,tr.w,tr.h,14);c.fill();c.strokeStyle='#d5dee8';c.lineWidth=1;c.stroke();
   text('Cisimler',tr.x+16,tr.y+30,18,700);
-  text('Sürükleyip kaba bırakın · ≈ yaklaşık değer',tr.x+16,tr.y+50,12,400,'#6a7a8e');
+  text('Sürükleyip kaba bırakın · ≈ yaklaşık değer',tr.x+16,tr.y+50,12,400,'#6a7a8e');text('Büyüklük sırası gerçek, ölçek küçültülmüş',tr.x+16,tr.y+66,12,400,'#6a7a8e');
   objs.forEach(o=>{const s=o.slot;c.fillStyle='#f4f7fa';rr(s.x,s.y,s.w,s.h,10);c.fill();
     if(o.state!=='home'){c.setLineDash([5,4]);c.strokeStyle='#c3cfdb';c.lineWidth=1.2;rr(s.x,s.y,s.w,s.h,10);c.stroke();c.setLineDash([]);
       const sx=o.x,sy=o.y,st=o.state;o.x=o.hx;o.y=o.hy;o.state='home';drawObj(o,.15);o.x=sx;o.y=sy;o.state=st;}
@@ -393,17 +421,36 @@ function render(){
   zOrder.forEach(o=>{if((o.state==='drag'&&!inside(o))||o.state==='ret')drawObj(o);});
   // alt panel
   const P=L.panel,pad=16;c.fillStyle='#fff';rr(P.x,P.y,P.w,P.h,14);c.fill();c.strokeStyle='#d5dee8';c.lineWidth=1;c.stroke();
-  const l1=P.y+(L.wide?30:24),big=L.wide?21:16;
+  const l1=P.y+(L.wide?28:22),big=L.wide?21:16;
   if(!lastObj)segs([{t:'Bir cismi sürükleyip kaba bırakın. Önce tahmin edin: batar mı, yüzer mi?',col:'#5b6b7f'}],P.x+P.w/2,l1,P.w-2*pad,big-3,'center');
   else{const o=lastObj,r=cmpOf(o);
     if(!resultDone)segs([{t:o.name,b:1},{t:'  →  gözleyin…',col:'#6a7a8e'}],P.x+P.w/2,l1,P.w-2*pad,big,'center');
     else if(showVals)segs([{t:o.name+' ',b:1},{t:dl(o)+' g/cm³'},{t:'   '+SYM[r]+'   ',b:1,col:OUTC[r]},{t:liq.name+' ',b:1},{t:dl(liq)+' g/cm³'},{t:'   →   '},{t:OUT[r],b:1,col:OUTC[r]}],P.x+P.w/2,l1,P.w-2*pad,big,'center');
     else segs([{t:o.name,b:1},{t:'  ·  '+liq.name+' içinde  →  '},{t:OUT[r],b:1,col:OUTC[r]}],P.x+P.w/2,l1,P.w-2*pad,big,'center');}
+  const io=drag?drag.o:lastObj;
+  if(io)segs([{t:io.name+':   ',b:1,col:'#3d4c5e'},{t:'Boyut ',col:'#5b6b7f'},{t:io.boy,b:1,col:'#3d4c5e'},{t:'   ·   Kütle ',col:'#5b6b7f'},{t:fmtM(io.m),b:1,col:'#3d4c5e'},{t:'   ·   Hacim ',col:'#5b6b7f'},{t:fmtNum(io.v,1)+' cm³',b:1,col:'#3d4c5e'},{t:'   ·   Ağırlık ≈ ',col:'#5b6b7f'},{t:fmtN(io.m)+' N',b:1,col:'#3d4c5e'}],P.x+P.w/2,P.y+(L.wide?57:44),P.w-2*pad,L.wide?16:13,'center');
   const act=lastObj&&resultDone?cmpOf(lastObj):null;
-  text('Cismin yoğunluğu sıvınınkinden …',P.x+pad,P.y+(L.wide?62:50),12,500,'#6a7a8e','left','middle');
-  const chips=[[1,'büyükse  →  BATAR'],[0,'eşitse  →  ASKIDA KALIR'],[-1,'küçükse  →  YÜZER']],gap=10,cw=(P.w-2*pad-2*gap)/3,cy=P.y+(L.wide?74:58),chh=L.wide?34:30;
+  text('Cismin yoğunluğu sıvınınkinden …',P.x+pad,P.y+(L.wide?84:66),12,500,'#6a7a8e','left','middle');
+  const chips=[[1,'büyükse  →  BATAR'],[0,'eşitse  →  ASKIDA KALIR'],[-1,'küçükse  →  YÜZER']],gap=10,cw=(P.w-2*pad-2*gap)/3,cy=P.y+(L.wide?96:76),chh=L.wide?34:30;
   chips.forEach((ch,i)=>{const x=P.x+pad+i*(cw+gap),on=act===ch[0];c.fillStyle=on?OUTC[ch[0]]:'#f3f6f9';rr(x,cy,cw,chh,9);c.fill();
     c.strokeStyle=on?OUTC[ch[0]]:'#dfe6ee';c.stroke();segs([{t:ch[1],b:on?1:0,col:on?'#fff':'#3d4c5e'}],x+cw/2,cy+chh/2+1,cw-12,L.wide?15:13,'center');});
+  drawTip();
+}
+/* ---------- Bilgi kartı (menüde fareyle bekleyince) ---------- */
+function drawTip(){
+  if(!hov||drag||hov.state!=='home')return;const el=performance.now()-hovT;if(el<450)return;
+  const o=hov,rows=[['Yoğunluk',showVals?dl(o)+' g/cm³':'gizli'],['Boyut',o.boy],['Kütle',fmtM(o.m)],['Hacim',fmtNum(o.v,1)+' cm³'],['Ağırlık','≈ '+fmtN(o.m)+' N']];
+  const w=236,lh=23,h=46+rows.length*lh+30;let x=hovP.x+16,y=hovP.y+20;
+  if(x+w>W-6)x=hovP.x-w-12;if(y+h>H-6)y=Math.max(6,hovP.y-h-12);
+  c.save();c.globalAlpha=Math.min(1,(el-450)/150);
+  c.shadowColor='rgba(20,35,55,.22)';c.shadowBlur=18;c.shadowOffsetY=6;c.fillStyle='#fff';rr(x,y,w,h,12);c.fill();
+  c.shadowColor='transparent';c.strokeStyle='#d5dee8';c.lineWidth=1;c.stroke();
+  c.fillStyle='#1f6fd1';rr(x,y,5,h,3);c.fill();
+  text(o.name,x+18,y+26,16,700,'#1d2a3a');
+  c.strokeStyle='#e6ecf2';c.beginPath();c.moveTo(x+16,y+40);c.lineTo(x+w-14,y+40);c.stroke();
+  rows.forEach((r,i)=>{const yy=y+46+i*lh+lh/2;text(r[0],x+18,yy,13,500,'#6a7a8e','left','middle');text(r[1],x+w-16,yy,14,700,'#1d2a3a','right','middle');});
+  text(o.approx&&showVals?'≈ yaklaşık değer · kütle, hacim örnektir':'Kütle ve hacim örnek değerdir',x+18,y+h-12,11,400,'#8593a4');
+  c.restore();
 }
 
 /* ---------- Döngü ---------- */

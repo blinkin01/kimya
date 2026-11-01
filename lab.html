@@ -41,7 +41,7 @@ canvas{position:fixed;left:0;display:block}
 (function(){
 "use strict";
 const bar=document.getElementById('bar'), cv=document.getElementById('cv'), c=cv.getContext('2d');
- 
+
 /* ---------- Veriler (Fen Bilimleri 6, 2. Kitap; ≈ işaretliler yaklaşık) ---------- */
 const LIQ={
   su:{name:'Su',d:1},
@@ -77,11 +77,11 @@ const objs=OBJ.map(o=>Object.assign({x:0,y:0,vy:0,state:'home',pf:0,still:0,hx:0
 // Tüm cisimler aynı kuralla ölçeklenir: çizim boyu ∝ √(gerçek boy). Büyüklük sırası korunur.
 objs.forEach(o=>{const f=30*Math.sqrt(o.L)/Math.max(o.w,o.h);o.w*=f;o.h*=f;});
 let zOrder=objs.slice();
- 
+
 let liqKey='su', col=liqColor('su').slice(), colFrom=col.slice(), colT=1;
 let showVals=true, lastObj=null, resultDone=false, firstDrop=false;
 const liqD=()=>LIQ[liqKey].d;
- 
+
 /* ---------- Yardımcılar ---------- */
 const clamp=(v,a,b)=>v<a?a:v>b?b:v, lerp=(a,b,t)=>a+(b-a)*t, rnd=(a,b)=>a+Math.random()*(b-a);
 function fmt(d){return (Math.round(d*100)/100).toString().replace('.',',');}
@@ -95,7 +95,7 @@ const OUTC={1:'#c8382e','0':'#b77d00','-1':'#16894a'};
 const SYM={1:'>','0':'=','-1':'<'};
 function rr(x,y,w,h,r){r=Math.min(r,w/2,h/2);c.beginPath();c.moveTo(x+r,y);c.lineTo(x+w-r,y);c.quadraticCurveTo(x+w,y,x+w,y+r);c.lineTo(x+w,y+h-r);c.quadraticCurveTo(x+w,y+h,x+w-r,y+h);c.lineTo(x+r,y+h);c.quadraticCurveTo(x,y+h,x,y+h-r);c.lineTo(x,y+r);c.quadraticCurveTo(x,y,x+r,y);c.closePath();}
 function rgba(a,al){return 'rgba('+(a[0]|0)+','+(a[1]|0)+','+(a[2]|0)+','+(al===undefined?a[3]:al)+')';}
- 
+
 /* ---------- Ses (Web Audio, dosya gerektirmez) ---------- */
 let AC=null,master=null,noiseBuf=null,muted=false,lastBloop=0;
 function initAudio(){
@@ -139,7 +139,7 @@ const SFX={
     else if(r<0){tone('triangle',523,0,.2,.12);tone('triangle',784,0,.38,.12,.14);}
     else{tone('triangle',587,0,.18,.11);tone('triangle',587,0,.32,.11,.2);}}
 };
- 
+
 /* ---------- Yerleşim ---------- */
 let W=0,H=0,DPR=1,S=1,G=1500;const L={};
 function layout(){
@@ -163,7 +163,7 @@ function layout(){
     if(o.state!=='tank'){o.state='home';o.x=o.hx;o.y=o.hy;}});
   rel.forEach(([o,rx,ry])=>{o.x=T.x0+rx*T.w;o.y=T.top+ry*T.h;o.x=clamp(o.x,T.xi0+o.w*S/2,T.xi1-o.w*S/2);o.still=0;});
 }
- 
+
 /* ---------- Dalga yüzeyi ---------- */
 const NW=120;let wy=new Float32Array(NW),wv=new Float32Array(NW),rise=0;
 function surfIdx(x){const T=L.tank;return clamp((x-T.xi0)/(T.xi1-T.xi0)*(NW-1),0,NW-1);}
@@ -175,12 +175,12 @@ function waveStep(h){
   for(let i=0;i<NW;i++){const l=wy[i>0?i-1:0],r=wy[i<NW-1?i+1:NW-1];wv[i]+=(c2*(l+r-2*wy[i])-9*wy[i]-2.8*wv[i])*h;}
   for(let i=0;i<NW;i++){wy[i]=clamp(wy[i]+wv[i]*h,-26*S,26*S);}
 }
- 
+
 /* ---------- Parçacıklar ---------- */
 let parts=[];
 function bubble(x,y){if(parts.length<320)parts.push({k:'b',x,y,r:rnd(2,5)*S,vy:-rnd(70,140)*S,ph:Math.random()*6});}
 function drop(x,y,vx,vy){if(parts.length<320)parts.push({k:'d',x,y,vx,vy,r:rnd(2,4.5)*S});}
- 
+
 /* ---------- Fizik ---------- */
 function subFrac(o){const hh=o.h*S/2;return clamp((o.y+hh-surfAt(o.x))/(2*hh),0,1);}
 function step(h){
@@ -226,7 +226,7 @@ function step(h){
   if(lastObj&&lastObj.state==='tank'&&!resultDone&&(lastObj.still>0.6||lastObj.t>3.5)){resultDone=true;SFX.result(cmpOf(lastObj));}
 }
 function inTank(o){const T=L.tank;return o.x>T.x0&&o.x<T.x1&&o.y<T.bi&&o.y>T.top-140*S;}
- 
+
 /* ---------- Etkileşim ---------- */
 let drag=null,hov=null,hovT=0,hovP={x:0,y:0};
 function pt(e){const r=cv.getBoundingClientRect();return {x:e.clientX-r.left,y:e.clientY-r.top};}
@@ -251,7 +251,7 @@ function release(){if(!drag)return;const o=drag.o;drag=null;cv.style.cursor='def
     if(o.pf>0){SFX.plop();for(let k=0;k<5;k++)bubble(o.x+rnd(-10,10)*S,o.y);}}
   else{o.state='ret';o.rt=0;o.rx=o.x;o.ry=o.y;SFX.back();if(lastObj===o)lastObj=null;}}
 cv.addEventListener('pointerup',release);cv.addEventListener('pointercancel',release);
- 
+
 /* ---------- Üst çubuk ---------- */
 const lb=document.getElementById('liqBtns'),btn={};
 ORDER.forEach(k=>{const b=document.createElement('button');b.textContent=LIQ[k].name;b.onclick=()=>setLiq(k);lb.appendChild(b);btn[k]=b;});
@@ -270,7 +270,7 @@ document.getElementById('bReset').onclick=()=>{initAudio();objs.forEach(o=>{if(o
 document.getElementById('bFull').onclick=()=>{const d=document;if(!d.fullscreenElement){(d.documentElement.requestFullscreen||d.documentElement.webkitRequestFullscreen||function(){}).call(d.documentElement);}else{(d.exitFullscreen||d.webkitExitFullscreen).call(d);}};
 window.addEventListener('resize',layout);
 if(window.ResizeObserver)new ResizeObserver(()=>layout()).observe(bar);
- 
+
 /* ---------- Cisim çizimleri (vektör) ---------- */
 function dRing(w,h){
   const band=h*.16,gH=h*.24,ry=(h-gH-band)/2,cy=-h/2+gH+band/2+ry,rx=w/2-band/2;
@@ -341,7 +341,7 @@ function dCork(w,h){const tw=w/2,bw=w*.4,ey=h*.1;
   c.fillStyle=g;c.beginPath();c.moveTo(-tw,-h/2+ey);c.lineTo(tw,-h/2+ey);c.lineTo(bw,h/2-ey*.6);c.quadraticCurveTo(0,h/2+ey*.2,-bw,h/2-ey*.6);c.closePath();c.fill();
   c.fillStyle='#dfb27c';c.beginPath();c.ellipse(0,-h/2+ey,tw,ey,0,0,Math.PI*2);c.fill();c.strokeStyle='rgba(110,70,30,.5)';c.lineWidth=1;c.stroke();
   c.fillStyle='rgba(95,58,22,.55)';for(let i=0;i<16;i++){const u=((i*37)%17)/17-.5,v=((i*53)%19)/19;c.beginPath();c.arc(u*w*.75*(1-v*.2),-h/2+ey*2+v*(h-ey*3),1.3,0,Math.PI*2);c.fill();}}
- 
+
 function dNail(w,h){
   const g=c.createLinearGradient(0,-h/2,0,h/2);g.addColorStop(0,'#e9edf1');g.addColorStop(.5,'#8a939e');g.addColorStop(1,'#4b535d');
   const hw=h*.3,sh=h*.34,tip=h*1.2;
@@ -363,7 +363,7 @@ function scOf(o){if(o.state==='home')return o.ts;if(o.state==='ret')return lerp(
 function drawObj(o,alpha){const k=scOf(o),w=o.w*S*k,h=o.h*S*k;c.save();c.translate(o.x,o.y);if(alpha!==undefined)c.globalAlpha=alpha;
   if(o.state==='drag'){c.shadowColor='rgba(0,0,0,.25)';c.shadowBlur=14;c.shadowOffsetY=6;}
   o.draw(w,h);c.restore();}
- 
+
 /* ---------- Çizim ---------- */
 function text(t,x,y,size,weight,color,align,base){c.font=(weight||400)+' '+size+'px system-ui,-apple-system,"Segoe UI",Roboto,sans-serif';c.fillStyle=color||'#1d2a3a';c.textAlign=align||'left';c.textBaseline=base||'alphabetic';c.fillText(t,x,y);}
 function segs(list,x,y,maxW,size,align){
@@ -452,7 +452,7 @@ function drawTip(){
   text(o.approx&&showVals?'≈ yaklaşık değer · kütle, hacim örnektir':'Kütle ve hacim örnek değerdir',x+18,y+h-12,11,400,'#8593a4');
   c.restore();
 }
- 
+
 /* ---------- Döngü ---------- */
 let last=performance.now();
 function frame(now){let dt=Math.min(.05,(now-last)/1000);last=now;const n=Math.max(1,Math.ceil(dt/(1/120))),h=dt/n;for(let i=0;i<n;i++)step(h);render();requestAnimationFrame(frame);}
